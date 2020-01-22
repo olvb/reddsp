@@ -305,7 +305,6 @@ def gen_decay_harm_values(duration, nb_harms, decay_amp):
     win = np.concatenate(
         (win[: FRAME_SR // 4], np.ones(FRAME_SR // 2), win[FRAME_SR // 4 :])
     )
-    assert len(win) == FRAME_SR
 
     # decaying harmonic profil
     time_decay = np.hamming(FRAME_SR * 2)[FRAME_SR:]
