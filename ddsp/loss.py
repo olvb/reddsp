@@ -8,7 +8,6 @@ __all__ = ["compute_stft", "spectral_loss"]
 EPSILON = 10 ** (-96 / 20)
 
 
-# TODO check magnitude
 def spectral_loss(stft_synth_all, stft_truth_all):
     loss = 0.0
 
@@ -16,8 +15,13 @@ def spectral_loss(stft_synth_all, stft_truth_all):
         stft_synth_log = torch.log(stft_synth + EPSILON)
         stft_truth_log = torch.log(stft_truth + EPSILON)
 
-        loss_lin = F.l1_loss(stft_synth, stft_truth, reduction="mean")
-        loss_log = F.l1_loss(stft_synth_log, stft_truth_log, reduction="mean")
+        loss_lin = F.l1_loss(stft_synth, stft_truth, reduction="none")
+        loss_log = F.l1_loss(stft_synth_log, stft_truth_log, reduction="none")
+
+        # mean on spectrogram dims, sum on batch
+        # TODO problematic because loss magnitude varies with batch size?
+        loss_lin = torch.sum(torch.mean(stft_synth, dim=(1,2)))
+        loss_log = torch.sum(torch.mean(loss_log, dim=(1,2)))
 
         loss += loss_lin + loss_log
 
@@ -43,10 +47,8 @@ def compute_stft(
         )
         stft = torch.sum(stft ** 2, dim=-1)
         # TODO check this
-        stft = stft[:, 1, :]  # remove DC
+        # stft = stft[:, 1, :]  # remove DC
         stft_all.append(stft)
 
     return stft_all
-
-
 
