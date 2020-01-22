@@ -22,6 +22,9 @@ class HarmonicSynth:
         self.device = device
         self.dtype = dtype
 
+        # Init data shared for all synthesis operation
+        self.harm_ranks = torch.arange(nb_harms, device=device) + 1
+
     def synthesize(self, f0, a0, aa):
         """Synthesize the harmonic path of the reconsructed signal
         by modulating oscillators with amplitude and spectral profiles output by network."""
@@ -41,12 +44,8 @@ class HarmonicSynth:
         nb_bounds = f0.size()[1]
         signal_length = nb_bounds * self.frame_length
 
-        # Init harmonic ranks
-        nb_harms = aa.size()[1]
-        harm_ranks = torch.arange(self.nb_harms, device=self.device) + 1
-
         # Multiply f0s by harmonic ranks to get all freqs
-        ff = f0.unsqueeze(1) * harm_ranks.unsqueeze(0).unsqueeze(-1)
+        ff = f0.unsqueeze(1) * self.harm_ranks.unsqueeze(0).unsqueeze(-1)
         # Prevent aliasing
         max_f = self.audio_sr / 2.0
         aa[ff >= max_f] = 0.0
@@ -91,8 +90,8 @@ class HarmonicSynth:
             cursor += stride - 1
         phases_acc %= 2.0 * np.pi
 
-        # multiply by harmonic ranks to get phase for all harmonics
-        phases_acc = phases_acc.unsqueeze(-1) * harm_ranks
+        # Multiply by harmonic ranks to get phase for all harmonics
+        phases_acc = phases_acc.unsqueeze(-1) * self.harm_ranks
         phases_acc = phases_acc.transpose(1, 2)
 
         harm_wf = aa * torch.sin(phases_acc)
