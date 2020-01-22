@@ -16,7 +16,7 @@ SCHEDULER_GAMMA = 0.99
 
 
 class Training:
-    def __init__(self, net, dataset, batch_size=12, learning_rate=0.0001):
+    def __init__(self, net, dataset, batch_size=12, learning_rate=0.001):
         self.net = net
         self.data_loader = DataLoader(dataset, batch_size, shuffle=True)
 

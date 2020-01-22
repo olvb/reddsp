@@ -8,6 +8,7 @@ __all__ = ["compute_stft", "spectral_loss"]
 EPSILON = 10 ** (-96 / 20)
 
 
+# TODO check magnitude
 def spectral_loss(stft_synth_all, stft_truth_all):
     loss = 0.0
 
@@ -23,6 +24,7 @@ def spectral_loss(stft_synth_all, stft_truth_all):
     return loss
 
 
+# TODO investigate normalization
 def compute_stft(
     wf, fft_sizes=[2048, 1024, 512, 256, 128, 64], normalized=False
 ):
@@ -40,8 +42,11 @@ def compute_stft(
             onesided=True,
         )
         stft = torch.sum(stft ** 2, dim=-1)
+        # TODO check this
         stft = stft[:, 1, :]  # remove DC
         stft_all.append(stft)
 
     return stft_all
+
+
 

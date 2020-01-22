@@ -46,7 +46,7 @@ class DDSPNetwork(nn.Module):
         self.mlp_f0 = MLP(1, 512)
         self.mlp_lo = MLP(1, 512)
         self.gru = nn.GRU(2 * 512, 512, batch_first=True)
-        # self.gru = nn.GRU(512, 512, batch_first=True)
+
         self.mlp = MLP(512, 512)
         self.dense_harm = nn.Linear(512, nb_harms + 1)
         self.dense_noise = nn.Linear(512, nb_noise_bands + 1)

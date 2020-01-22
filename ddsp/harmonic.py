@@ -47,6 +47,7 @@ class HarmonicSynth:
         # Multiply f0s by harmonic ranks to get all freqs
         ff = f0.unsqueeze(1) * self.harm_ranks.unsqueeze(0).unsqueeze(-1)
         # Prevent aliasing
+        # TODO add smoother method
         max_f = self.audio_sr / 2.0
         aa[ff >= max_f] = 0.0
 
