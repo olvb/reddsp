@@ -29,13 +29,12 @@ class NoiseSynth:
         assert h0.size()[0] == hh.size()[0]  # batch dim
         assert h0.size()[1] == hh.size()[2]  # frame dim
 
-        # drop last frame
         nb_batchs, _, nb_frames = hh.size()
 
-        # transform filter coeffs back to time
         hh = hh.transpose(1, 2)
-        z = torch.zeros(hh.shape, dtype=self.dtype, device=self.device)
-        hh = torch.stack((hh, z), dim=-1)
+        # Init data shared for all synthesis operation
+        spectral_zeros = torch.zeros(hh.shape, dtype=self.dtype, device=self.device)
+        hh = torch.stack((hh, spectral_zeros), dim=-1)
         ir = torch.irfft(hh, 1, onesided=True)
 
         # to linear phase
@@ -43,7 +42,7 @@ class NoiseSynth:
 
         # apply hann window
         win = torch.hann_window(
-            ir.shape[-1], device=self.device, dtype=self.dtype
+            ir.shape[-1], periodic=False, device=self.device, dtype=self.dtype
         )
         win = win.reshape(1, 1, -1)
         ir = ir * win
@@ -54,7 +53,7 @@ class NoiseSynth:
         padding_right = padding - padding_left
         ir = F.pad(ir, (padding_left, padding_right))
 
-        # init noise in [-0.1, +0.1]
+        # init noise
         noise = (
             torch.rand(
                 nb_frames,
