@@ -24,10 +24,10 @@ class NoiseSynth:
         """Synthesize the noise part of the reconsructed signal by filtering noise
         with filter coefficients output by network"""
 
-        assert len(h0.size()) == 2
-        assert len(hh.size()) == 3
-        assert h0.size()[0] == hh.size()[0]  # batch dim
-        assert h0.size()[1] == hh.size()[2]  # frame dim
+        # assert len(h0.size()) == 2
+        # assert len(hh.size()) == 3
+        # assert h0.size()[0] == hh.size()[0]  # batch dim
+        # assert h0.size()[1] == hh.size()[2]  # frame dim
 
         nb_batchs, _, nb_frames = hh.size()
 

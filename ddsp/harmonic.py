@@ -29,16 +29,16 @@ class HarmonicSynth:
         """Synthesize the harmonic path of the reconsructed signal
         by modulating oscillators with amplitude and spectral profiles output by network."""
 
-        assert len(f0.size()) == 2
-        assert len(a0.size()) == 2
-        assert len(aa.size()) == 3
+        # assert len(f0.size()) == 2
+        # assert len(a0.size()) == 2
+        # assert len(aa.size()) == 3
 
-        # Batch dim
-        assert f0.size()[0] == a0.size()[0]
-        assert f0.size()[0] == aa.size()[0]
-        # Frame dim
-        assert f0.size()[1] == a0.size()[1]
-        assert f0.size()[1] == aa.size()[2]
+        # # Batch dim
+        # assert f0.size()[0] == a0.size()[0]
+        # assert f0.size()[0] == aa.size()[0]
+        # # Frame dim
+        # assert f0.size()[1] == a0.size()[1]
+        # assert f0.size()[1] == aa.size()[2]
 
         # Initialisation of lengths
         nb_bounds = f0.size()[1]
