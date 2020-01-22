@@ -12,7 +12,7 @@ from ddsp.noise import NoiseSynth
 AUDIO_SR = 16000
 FRAME_SR = 100
 FRAME_LENGTH = AUDIO_SR // FRAME_SR
-
+DATASET_FOLDER_PATH = "datasets"
 
 def gen_harm_dataset(
     out_path, nb_files=5, duration=30, nb_harms=10, dyn_profile=True
@@ -182,8 +182,10 @@ def gen_harm_then_noise_dataset(
         f0, a0, aa = gen_harm_frames(
             duration, nb_harms, dyn_profile=False, amps=amps
         )
+        h0, hh = gen_noise_frames(
+            duration, nb_noise_bands, dyn_profile=False, amps=amps
+        )
 
-        noise_wf = torch.roll(noise_wf, AUDIO_SR // 2)
         # write f0 files
         filename = "{}_{}.f0.csv".format(base_name, i)
         path = os.path.join(f0_path, filename)
@@ -198,6 +200,8 @@ def gen_harm_then_noise_dataset(
         # generate and write audio
         harm_wf = harm_synth.synthesize(f0, a0, aa)
         noise_wf = noise_synth.synthesize(h0, hh)
+        noise_wf = torch.roll(noise_wf, AUDIO_SR // 2)
+
         wf = harm_wf + noise_wf
         wf = wf[0].numpy().astype(np.float32)
 
@@ -394,37 +398,43 @@ def write_crepe_like_csv(f0s, duration, out_path):
 
 
 if __name__ == "__main__":
-    # gen_harm_dataset(nb_harms=1, out_path="datasets/pure")
-    # gen_harm_dataset(
-    #     nb_harms=10, dyn_profile=True, out_path="datasets/harm_dyn"
-    # )
-    # gen_harm_dataset(
-    #     nb_harms=10, dyn_profile=False, out_path="datasets/harm_static"
-    # )
-    # gen_noise_dataset(
-    #     nb_noise_bands=20,
-    #     dyn_profile=True,
-    #     default_amp=1e-1,
-    #     out_path="datasets/noise_dyn",
-    # )
-    # gen_noise_dataset(
-    #     nb_noise_bands=20,
-    #     dyn_profile=False,
-    #     default_amp=1e-1,
-    #     out_path="datasets/noise_static",
-    # )
-    # gen_harm_and_noise_dataset(
-    #     nb_harms=10,
-    #     nb_noise_bands=20,
-    #     out_path="datasets/harm_and_noise"
-    # )
-    # gen_harm_or_noise_dataset(
-    #     nb_harms=10,
-    #     nb_noise_bands=20,
-    #     out_path="datasets/harm_or_noise"
-    # )
+    gen_harm_dataset(nb_harms=1, out_path=os.path.join("datasets", "pure"))
+
+    gen_harm_dataset(
+        nb_harms=10, dyn_profile=True, out_path=os.path.join("datasets", "harm_dyn")
+    )
+
+    gen_harm_dataset(
+        nb_harms=10, dyn_profile=False, out_path=os.path.join("datasets", "harm_static")
+    )
+
+    gen_noise_dataset(
+        nb_noise_bands=20,
+        dyn_profile=True,
+        default_amp=1e-1,
+        out_path=os.path.join("datasets", "noise_dyn")
+    )
+
+    gen_noise_dataset(
+        nb_noise_bands=20,
+        dyn_profile=False,
+        default_amp=1e-1,
+        out_path=os.path.join("datasets", "noise_static")
+    )
+
+    gen_harm_and_noise_dataset(
+        nb_harms=10,
+        nb_noise_bands=20,
+        out_path=os.path.join("datasets", "harm_and_noise")
+    )
+
+    gen_harm_then_noise_dataset(
+        nb_harms=10,
+        nb_noise_bands=20,
+        out_path=os.path.join("datasets", "harm_or_noise")
+    )
 
     gen_decay_harm_dataset(
-        nb_harms=10, decay_amp=True, out_path="datasets/harm_decay_amp_decay"
+        nb_harms=10, decay_amp=True, out_path=os.path.join("datasets", "harm_decay")
     )
 
