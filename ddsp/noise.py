@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 
-__all__ = ["synthetize_noise"]
+__all__ = ["synthesize_noise"]
 
 
 class NoiseSynth:
@@ -20,8 +20,8 @@ class NoiseSynth:
         self.device = device
         self.dtype = dtype
 
-    def synthetize(self, h0, hh):
-        """Synthetize the noise part of the reconsructed signal by filtering noise
+    def synthesize(self, h0, hh):
+        """Synthesize the noise part of the reconsructed signal by filtering noise
         with filter coefficients output by network"""
 
         assert len(h0.size()) == 2

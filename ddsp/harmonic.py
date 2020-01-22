@@ -22,8 +22,8 @@ class HarmonicSynth:
         self.device = device
         self.dtype = dtype
 
-    def synthetize(self, f0, a0, aa):
-        """Synthetize the harmonic path of the reconsructed signal
+    def synthesize(self, f0, a0, aa):
+        """Synthesize the harmonic path of the reconsructed signal
         by modulating oscillators with amplitude and spectral profiles output by network."""
 
         assert len(f0.size()) == 2

@@ -43,7 +43,7 @@ def gen_harm_dataset(
         aa = torch.tensor(aa).unsqueeze(0)
 
         # generate and write audio
-        wf = harm_synth.synthetize(f0, a0, aa)
+        wf = harm_synth.synthesize(f0, a0, aa)
         wf = wf[0].numpy().astype(np.float32)
 
         filename = "{}_{}.wav".format(base_name, i)
@@ -80,7 +80,7 @@ def gen_noise_dataset(
         hh = torch.from_numpy(hh).unsqueeze(0)
 
         # generate and write audio
-        wf = noise_synth.synthetize(h0, hh)
+        wf = noise_synth.synthesize(h0, hh)
         wf = wf[0].numpy().astype(np.float32)
 
         filename = "{}_{}.wav".format(base_name, i)
@@ -142,8 +142,8 @@ def gen_harm_and_noise_dataset(
         hh = torch.from_numpy(hh).unsqueeze(0)
 
         # generate and write audio
-        harm_wf = harm_synth.synthetize(f0, a0, aa)
-        noise_wf = noise_synth.synthetize(h0, hh)
+        harm_wf = harm_synth.synthesize(f0, a0, aa)
+        noise_wf = noise_synth.synthesize(h0, hh)
         wf = harm_wf + noise_wf
         wf = wf[0].numpy().astype(np.float32)
 
@@ -196,8 +196,8 @@ def gen_harm_then_noise_dataset(
         hh = torch.from_numpy(hh).unsqueeze(0)
 
         # generate and write audio
-        harm_wf = harm_synth.synthetize(f0, a0, aa)
-        noise_wf = noise_synth.synthetize(h0, hh)
+        harm_wf = harm_synth.synthesize(f0, a0, aa)
+        noise_wf = noise_synth.synthesize(h0, hh)
         wf = harm_wf + noise_wf
         wf = wf[0].numpy().astype(np.float32)
 
@@ -236,7 +236,7 @@ def gen_decay_harm_dataset(
         aa = torch.tensor(aa).unsqueeze(0)
 
         # generate and write audio
-        wf = harm_synth.synthetize(f0, a0, aa)
+        wf = harm_synth.synthesize(f0, a0, aa)
         wf = wf[0].numpy().astype(np.float32)
 
         filename = "{}_{}.wav".format(base_name, i)

@@ -51,8 +51,8 @@ def generate(
 
     f0 = f0.squeeze(-1)
 
-    harm_wf = harm_synth.synthetize(f0, a0, aa)
-    noise_wf = noise_synth.synthetize(h0, hh)
+    harm_wf = harm_synth.synthesize(f0, a0, aa)
+    noise_wf = noise_synth.synthesize(h0, hh)
     synth_wf = harm_wf + noise_wf
 
     harm_wf = harm_wf.numpy().reshape(-1).astype(np.float32)

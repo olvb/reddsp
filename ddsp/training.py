@@ -51,8 +51,8 @@ class Training:
             a0, aa, h0, hh = self.net.forward(f0, lo)
 
             f0 = f0.squeeze(-1)
-            harm_wf = self.harm_synth.synthetize(f0, a0, aa)
-            noise_wf = self.noise_synth.synthetize(h0, hh)
+            harm_wf = self.harm_synth.synthesize(f0, a0, aa)
+            noise_wf = self.noise_synth.synthesize(h0, hh)
             synth_wf = harm_wf + noise_wf
             synth_stfts = compute_stft(synth_wf)
             truth_stfts = [s.to(self.net.device) for s in fragments["stfts"]]
