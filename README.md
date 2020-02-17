@@ -8,8 +8,8 @@ Usage:
 3. Launch training with paths to dataset, checkpoint folder and TensorBoard run folder.
 4. Monitor training and results with TensorBoard.
 ```shell
-./preprocess_dataset.
-./gen_toy_datasets.py datasets/py datasets/harm_decay/
+./gen_toy_datasets.py datasets/
+./preprocess_dataset.py datasets/harm_decay/
 ./train_model.py datasets/harm_decay/ checkpoints/harm_static_checkpt.pth runs/harm_decay
 tensorboard --logdir=runs
 ```
