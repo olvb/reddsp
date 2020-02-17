@@ -1,44 +1,36 @@
 import torch
+import torch.nn
 import torch.nn.functional as F
 import numpy as np
 
-__all__ = ["HarmonicSynth"]
+__all__ = ["HarmSynth"]
 
 
-class HarmonicSynth:
-    def __init__(
-        self,
-        nb_harms,
-        frame_length,
-        audio_sr,
-        dtype=torch.float,
-        device=torch.device("cpu"),
-    ):
+class HarmSynth(torch.nn.Module):
+    def __init__(self, nb_harms, frame_length, audio_sr):
+        super(HarmSynth, self).__init__()
+
         self.nb_harms = nb_harms
         self.frame_length = frame_length
         self.audio_sr = audio_sr
         self.max_normalize = False
 
-        self.device = device
-        self.dtype = dtype
+        self.register_buffer("harm_ranks", torch.arange(nb_harms) + 1)
 
-        # Init data shared for all synthesis operation
-        self.harm_ranks = torch.arange(nb_harms, device=device) + 1
-
-    def synthesize(self, f0, a0, aa):
+    def forward(self, f0, a0, aa):
         """Synthesize the harmonic path of the reconsructed signal
         by modulating oscillators with amplitude and spectral profiles output by network."""
 
-        # assert len(f0.size()) == 2
-        # assert len(a0.size()) == 2
-        # assert len(aa.size()) == 3
+        assert len(f0.size()) == 2
+        assert len(a0.size()) == 2
+        assert len(aa.size()) == 3
 
-        # # Batch dim
-        # assert f0.size()[0] == a0.size()[0]
-        # assert f0.size()[0] == aa.size()[0]
-        # # Frame dim
-        # assert f0.size()[1] == a0.size()[1]
-        # assert f0.size()[1] == aa.size()[2]
+        # Batch dim
+        assert f0.size()[0] == a0.size()[0]
+        assert f0.size()[0] == aa.size()[0]
+        # Frame dim
+        assert f0.size()[1] == a0.size()[1]
+        assert f0.size()[1] == aa.size()[2]
 
         # Initialisation of lengths
         nb_bounds = f0.size()[1]
@@ -59,10 +51,10 @@ class HarmonicSynth:
             aa_sum = torch.sum(aa, dim=1)
             aa = aa / aa_sum.unsqueeze(1)
 
-        # apply global amplitude
+        # apply global amplitude to harmonic amplitudes
         aa = aa * a0.unsqueeze(1)
 
-        # interpolate aa to audio fs
+        # interpolate harmonic amplitudes to audio fs
         aa = F.interpolate(
             aa, size=signal_length, mode="linear", align_corners=True
         )
@@ -95,9 +87,12 @@ class HarmonicSynth:
         phases_acc = phases_acc.unsqueeze(-1) * self.harm_ranks
         phases_acc = phases_acc.transpose(1, 2)
 
-        harm_wf = aa * torch.sin(phases_acc)
+        harm_audio = aa * torch.sin(phases_acc)
 
         # Sum over harmonics
-        wf = torch.sum(harm_wf, dim=1)
+        audio = torch.sum(harm_audio, dim=1)
 
-        return wf
+        return audio
+
+    def synthesize(self, f0, a0, aa):
+        return self.forward(f0, a0, aa)

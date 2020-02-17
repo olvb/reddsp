@@ -1,110 +1,154 @@
 import os
+from functools import lru_cache
 
 import torch
 from torch.utils.data import DataLoader
+import torch.optim
 import numpy as np
-from torch import optim
 
-from .network import DDSPNetwork
-from .harmonic import HarmonicSynth
-from .noise import NoiseSynth
-from .loss import compute_stft, spectral_loss
+from .model.decoder import Decoder
+from .spectral import MultiScaleSTFT
+from .loss import SpectralLinLogLoss
 
-__all__ = ["train", "save_checkpoint", "restore_checkpoint"]
-
-SCHEDULER_GAMMA = 0.99
+__all__ = ["Training", "save_checkpoint", "restore_checkpoint"]
 
 # TODO split dataset into training/eval
 
+
 class Training:
-    def __init__(self, net, dataset, batch_size=12, learning_rate=0.0001):
-        self.net = net
-        self.data_loader = DataLoader(dataset, batch_size, shuffle=True)
+    def __init__(
+        self,
+        model,
+        dataset,
+        batch_size=12,
+        train_test_split=0.8,
+        learning_rate=0.0001,
+        scheduler_gamma=0.99,
+        device=torch.device("cpu"),
+    ):
+        self.model = model.to(device=device)
 
-        self.harm_synth = HarmonicSynth(
-            net.nb_harms,
-            audio_sr=dataset.audio_sr,
-            frame_length=dataset.frame_length,
-            dtype=net.dtype,
-            device=net.device,
+        # split into train/test
+        train_length = round(train_test_split * len(dataset))
+        test_length = len(dataset) - train_length
+        train_dataset, test_dataset = torch.utils.data.random_split(
+            dataset, (train_length, test_length)
         )
-        self.noise_synth = NoiseSynth(
-            net.nb_noise_bands,
-            frame_length=dataset.frame_length,
-            dtype=net.dtype,
-            device=net.device,
-        )
-        self.cur_epoch = 0
 
-        self.optimizer = optim.Adam(net.parameters(), lr=learning_rate)
-        self.scheduler = optim.lr_scheduler.ExponentialLR(
-            self.optimizer, SCHEDULER_GAMMA
+        self.train_data_loader = DataLoader(
+            train_dataset, batch_size, shuffle=True
         )
+        self.test_data_loader = DataLoader(
+            test_dataset, batch_size, shuffle=False
+        )
+
+        self.epoch = 0
+
+        self.optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+        self.scheduler = torch.optim.lr_scheduler.ExponentialLR(
+            self.optimizer, scheduler_gamma
+        )
+
+        self.spectral_transform = MultiScaleSTFT()
+        self.spectral_loss = SpectralLinLogLoss()
+
+        self.device = device
 
     def run_epoch(self):
-        nb_batchs = len(self.data_loader)
-        epoch_loss = 0
+        nb_batchs = len(self.train_data_loader)
+        loss_sum = 0
 
-        for i, fragments in enumerate(self.data_loader, 0):
-            f0 = fragments["f0"].to(self.net.device).unsqueeze(-1)
-            lo = fragments["lo"].to(self.net.device).unsqueeze(-1)
+        for fragments in self.train_data_loader:
+            truth_audio = fragments["audio"]
+            f0 = fragments["f0"]
+            lo = fragments["lo"]
 
-            a0, aa, h0, hh = self.net.forward(f0, lo)
+            # send to device
+            truth_audio = truth_audio.to(device=self.device)
+            f0 = f0.to(device=self.device)
+            lo = lo.to(device=self.device)
 
-            f0 = f0.squeeze(-1)
-            harm_wf = self.harm_synth.synthesize(f0, a0, aa)
-            noise_wf = self.noise_synth.synthesize(h0, hh)
-            synth_wf = harm_wf + noise_wf
-            synth_stfts = compute_stft(synth_wf)
-            truth_stfts = [s.to(self.net.device) for s in fragments["stfts"]]
-            loss = spectral_loss(synth_stfts, truth_stfts)
-
+            resynth_audio, _, _ = self.model.forward(f0, lo)
+            resynth_stfts = self.spectral_transform(resynth_audio)
+            truth_stfts = self.get_truth_spectral(truth_audio)
+            # TODO send truth stft to proper device
+            # [s.to(self.model.device) for s in fragments["stfts"]]
+            loss = self.spectral_loss(resynth_stfts, truth_stfts)
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
 
-            epoch_loss += loss.item()
+            loss_sum += loss.item()
 
-        self.cur_epoch += 1
-        # TODO check why
-        torch.cuda.empty_cache()
-
+        self.train_loss = loss_sum / nb_batchs
+        self.epoch += 1
         self.scheduler.step()
-        epoch_loss /= nb_batchs
-        return epoch_loss
+
+    def test_epoch(self):
+        nb_batchs = len(self.test_data_loader)
+        loss_sum = 0
+
+        for fragment in self.test_data_loader:
+            truth_audio = fragment["audio"]
+            f0 = fragment["f0"]
+            lo = fragment["lo"]
+
+            # send to device
+            truth_audio = truth_audio.to(device=self.device)
+            f0 = f0.to(device=self.device)
+            lo = lo.to(device=self.device)
+
+            with torch.no_grad():
+                resynth_audio, _, _ = self.model.forward(f0, lo)
+                resynth_stfts = self.spectral_transform(resynth_audio)
+                truth_stfts = self.get_truth_spectral(truth_audio)
+                # TODO send truth stft to proper device
+                # [s.to(self.model.device) for s in fragments["stfts"]]
+                loss = self.spectral_loss(resynth_stfts, truth_stfts)
+
+                loss_sum += loss.item()
+
+        self.test_loss = loss_sum / nb_batchs
+
+    @lru_cache()
+    def get_truth_spectral(self, fragments_audio):
+        return self.spectral_transform(fragments_audio)
 
 
 def save_checkpoint(training, out_path):
     state = {
-        "net": training.net.state_dict(),
-        "cur_epoch": training.cur_epoch,
-        "optimizer": training.optimizer.state_dict(),
-        "scheduler": training.scheduler.state_dict(),
+        # "data_loader": training.data_loader,
+        # "epoch": training.epoch,
+        # "train_loss": training.train_loss,
+        # "epoch_loss": training.epoch_loss,
+        "model_state_dict": training.model.state_dict(),
+        # "optimizer_state_dict": training.optimizer.state_dict(),
+        # "scheduler_state_dict": training.scheduler.state_dict(),
     }
     torch.save(state, out_path)
 
 
-def restore_checkpoint(path, dataset, nb_harms, nb_noise_bands, dtype, device):
-    state = torch.load(path, map_location=device)
+# def restore_checkpoint(path, dataset, device=torch.device("cpu")):
+#     state = torch.load(path, map_location=device)
 
-    net = DDSPNetwork(nb_harms, nb_noise_bands, dtype=dtype, device=device)
-    net.load_state_dict(state["net"])
-    net = net.type(dtype)
-    net = net.to(device)
-    net.dtype = dtype
-    net.device = device
+#     data_loader = state.data_loader
 
-    training = Training(net, dataset)
+#     model = Decoder()
+#     model.load_state_dict(state["model_state_dict"])
 
-    training.optimizer = optim.Adam(net.parameters())
-    training.optimizer.load_state_dict(state["optimizer"])
+#     training = Training(decoder, dataset)
 
-    training.scheduler = optim.lr_scheduler.ExponentialLR(
-        training.optimizer, SCHEDULER_GAMMA
-    )
-    training.scheduler.load_state_dict(state["scheduler"])
+#     training.optimizer = torch.optim.Adam(decoder.parameters())
+#     training.optimizer.load_state_dict(state["optimizer_state_dict"])
 
-    training.cur_epoch = state["cur_epoch"]
+#     scheduler_gamma = state["scheduler_state_dict"]["gama"]
+#     training.scheduler = torch.optim.lr_scheduler.ExponentialLR(
+#         training.optimizer, scheduler_gamma
+#     )
+#     training.scheduler.load_state_dict(state["scheduler_state_dict"])
 
-    return training
+#     training.epoch = state["epoch"]
+#     traing.train_loss = state["train_loss"]
+#     traing.epoch_loss = state["epoch_loss"]
 
+#     return training
