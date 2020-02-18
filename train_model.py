@@ -116,10 +116,12 @@ writer = SummaryWriter(run_dir_path)
 
 # load dataset
 wav_dir_path = os.path.join(dataset_dir_path, "audio")
-preprocess_dir_path = os.path.join(dataset_dir_path, "preprocess")
+pitch_dir_path = os.path.join(dataset_dir_path, "pitch")
+loudness_dir_path = os.path.join(dataset_dir_path, "loudness")
 dataset = Dataset(
     wav_dir_path,
-    preprocess_dir_path,
+    pitch_dir_path,
+    loudness_dir_path,
     fragment_duration=frag_duration,
     dtype=dtype,
 )
@@ -177,7 +179,9 @@ while training.epoch < nb_epochs:
         save_checkpoint(training, out_path=checkpoint_path)
 
     # plot ref audio resynth
-    resynth_audio, resynth_harm, resynth_noise = model.infer(ref_f0, ref_lo)
+    resynth_audio, resynth_harm, resynth_noise = model.infer(
+        ref_f0, ref_lo, to_numpy=True
+    )
     writer.add_audio(
         "Resynth/Full", resynth_audio, training.epoch, dataset.audio_sr
     )

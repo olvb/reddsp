@@ -55,7 +55,7 @@ class Decoder(torch.nn.Module):
 
         a0, aa, h0, hh = self.decoder_net.forward(f0, lo)
 
-        f0 = f0.squeeze(-1)  # TODO explain
+        f0 = f0.squeeze(-1)  # TODO explain what is going on here
 
         if not self.bypass_harm:
             harm_audio = self.harm_synth.forward(f0, a0, aa)
@@ -73,21 +73,22 @@ class Decoder(torch.nn.Module):
             resynth_audio = noise_audio
         else:
             resynth_audio = noise_audio + harm_audio
+
         return resynth_audio, harm_audio, noise_audio
 
-    def infer(self, lo, f0):
-        """Generates audio with trained network using lo and f0 vectors."""
+    def infer(self, f0, lo, to_numpy=False):
+        """Generates audio with trained network using f0 and lo vectors."""
 
         # lo = torch.tensor(lo)
         # f0 = torch.tensor(f0)
 
         # cast to proper dtype
-        lo = lo.type(self.dtype)
         f0 = f0.type(self.dtype)
+        lo = lo.type(self.dtype)
 
         # add batch dim
-        lo = lo.unsqueeze(0)
         f0 = f0.unsqueeze(0)
+        lo = lo.unsqueeze(0)
 
         with torch.no_grad():
             resynth_audio, harm_audio, noise_audio = self.forward(f0, lo)
@@ -97,8 +98,14 @@ class Decoder(torch.nn.Module):
         if noise_audio is None:
             noise_audio = torch.zeros_like(resynth_audio)
 
-        resynth_audio = resynth_audio.numpy().reshape(-1).astype(np.float32)
-        harm_audio = harm_audio.numpy().reshape(-1).astype(np.float32)
-        noise_audio = noise_audio.numpy().reshape(-1).astype(np.float32)
+        # remove batch dim
+        resynth_audio = resynth_audio.reshape(-1)
+        harm_audio = harm_audio.reshape(-1)
+        noise_audio = noise_audio.reshape(-1)
+
+        if to_numpy:
+            resynth_audio = resynth_audio.numpy().astype(np.float32)
+            harm_audio = harm_audio.numpy().astype(np.float32)
+            noise_audio = noise_audio.numpy().astype(np.float32)
 
         return resynth_audio, harm_audio, noise_audio

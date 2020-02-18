@@ -3,6 +3,9 @@ import librosa
 import numpy as np
 
 
+EPSILON = 10 ** (-96 / 20)
+
+
 class RMSLoudness:
     def __init__(self):
         pass
@@ -20,6 +23,7 @@ class RMSLoudness:
         )
 
         lo = lo.flatten()
+        # log = np.log(lo + EPSILON)
         lo = lo.astype(np.float)
         lo = torch.from_numpy(lo)
         return lo

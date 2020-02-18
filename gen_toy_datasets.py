@@ -27,7 +27,7 @@ def write_wavs(audios, out_dir_path, dataset_name):
     audio_dir_path = os.path.join(out_dir_path, dataset_name, "audio")
     pathlib.Path(audio_dir_path).mkdir(parents=True, exist_ok=True)
     for i, audio in enumerate(audios):
-        filename = "{}_{:d}.wav".format(dataset_name, i)
+        filename = "{}_{:d}.wav".format(dataset_name, i + 1)
         audio_path = os.path.join(audio_dir_path, filename)
         scipy.io.wavfile.write(audio_path, audio_sr, audio)
 

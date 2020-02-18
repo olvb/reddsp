@@ -19,6 +19,7 @@ class Preprocessor:
     def preprocess(self, audio, audio_sr):
         assert audio_sr == self.audio_sr, "Inconsistent audio sample rate"
 
-        lo = self.loudness_transform(audio, audio_sr, self.frame_sr)
         f0 = self.pitch_transform(audio, audio_sr, self.frame_sr)
+        lo = self.loudness_transform(audio, audio_sr, self.frame_sr)
+
         return f0, lo

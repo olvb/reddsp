@@ -12,8 +12,6 @@ from .loss import SpectralLinLogLoss
 
 __all__ = ["Training", "save_checkpoint", "restore_checkpoint"]
 
-# TODO split dataset into training/eval
-
 
 class Training:
     def __init__(

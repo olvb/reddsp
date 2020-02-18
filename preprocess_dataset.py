@@ -25,9 +25,15 @@ audio_sr = args.audio_sr
 frame_sr = args.frame_sr
 
 wav_dir_path = os.path.join(dataset_dir_path, "audio")
-preprocess_dir_path = os.path.join(dataset_dir_path, "preprocess")
-pathlib.Path(preprocess_dir_path).mkdir(parents=True, exist_ok=True)
+pitch_dir_path = os.path.join(dataset_dir_path, "pitch")
+pathlib.Path(pitch_dir_path).mkdir(parents=True, exist_ok=True)
+loudness_dir_path = os.path.join(dataset_dir_path, "loudness")
+pathlib.Path(loudness_dir_path).mkdir(parents=True, exist_ok=True)
 
 preprocess_dataset(
-    wav_dir_path, preprocess_dir_path, audio_sr=audio_sr, frame_sr=frame_sr
+    wav_dir_path,
+    pitch_dir_path,
+    loudness_dir_path,
+    audio_sr=audio_sr,
+    frame_sr=frame_sr,
 )
