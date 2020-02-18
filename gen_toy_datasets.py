@@ -35,21 +35,21 @@ def write_wavs(audios, out_dir_path, dataset_name):
 audios = gen_harm_dataset(nb_harms=1, audio_sr=audio_sr)
 write_wavs(audios, out_dir_path, "pure")
 
-audios = gen_harm_dataset(nb_harms=10, dyn_profile=True, audio_sr=audio_sr)
-write_wavs(audios, out_dir_path, "harm_dyn")
-
 audios = gen_harm_dataset(nb_harms=10, dyn_profile=False, audio_sr=audio_sr)
 write_wavs(audios, out_dir_path, "harm_static")
 
-audios = gen_noise_dataset(
-    nb_noise_bands=20, dyn_profile=True, default_amp=1e-1, audio_sr=audio_sr
-)
-write_wavs(audios, out_dir_path, "noise_dyn")
+audios = gen_harm_dataset(nb_harms=10, dyn_profile=True, audio_sr=audio_sr)
+write_wavs(audios, out_dir_path, "harm_dyn")
 
 audios = gen_noise_dataset(
     nb_noise_bands=20, dyn_profile=False, default_amp=1e-1, audio_sr=audio_sr
 )
 write_wavs(audios, out_dir_path, "noise_static")
+
+audios = gen_noise_dataset(
+    nb_noise_bands=20, dyn_profile=True, default_amp=1e-1, audio_sr=audio_sr
+)
+write_wavs(audios, out_dir_path, "noise_dyn")
 
 audios = gen_harm_and_noise_dataset(
     nb_harms=10, nb_noise_bands=20, audio_sr=audio_sr
