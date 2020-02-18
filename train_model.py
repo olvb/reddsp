@@ -7,6 +7,9 @@ import pathlib
 import torch
 import torch.utils.data
 from torch.utils.tensorboard import SummaryWriter
+import scipy.signal
+import scipy.fft
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -19,7 +22,26 @@ def plot_wf(audio, sr):
     fig = plt.figure()
     ax = fig.subplots()
     t = np.arange(len(audio)) * 1 / sr
+    ax.set_ylim((-1.0, 1.0))
     ax.plot(t, audio)
+    return fig
+
+
+def plot_spectrogram(audio, sr):
+    eps = np.finfo(audio.dtype).eps
+
+    fig = plt.figure()
+    ax = fig.subplots()
+    f, t, spec = scipy.signal.spectrogram(
+        audio, sr, nperseg=2048, noverlap=512
+    )
+    spec = 20 * np.log10(abs(spec) + eps)
+    ax.pcolormesh(t, f, spec, cmap="inferno")
+    ax.set_yscale("log")
+    ax.set_yticks([20, 100, 200, 1000, 2000, 10000])
+    ax.get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+    ax.set_ylim((20, max(f)))
+
     return fig
 
 
@@ -30,10 +52,9 @@ parser.add_argument(
     help="Path to the dataset folder containing wav files and preprocessed data",
 )
 parser.add_argument(
-    "checkpoint_path", metavar="checkpoint", help="Checkpoint file path"
-)
-parser.add_argument(
-    "run_dir_path", metavar="run-dir", help="Path to TensorBoard run folder"
+    "run_dir_path",
+    metavar="run-dir",
+    help="Path to TensorBoard run folder. Checkpoints will also be saved here",
 )
 parser.add_argument(
     "--bypass-harm", action="store_true", help="Bypass harmonics generation"
@@ -72,7 +93,6 @@ parser.add_argument(
 
 args = parser.parse_args()
 dataset_dir_path = args.dataset_dir_path
-checkpoint_path = args.checkpoint_path
 run_dir_path = args.run_dir_path
 bypass_harm = args.bypass_harm
 bypass_noise = args.bypass_noise
@@ -89,8 +109,8 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 torch.autograd.set_detect_anomaly(torch_autograd_anomaly)
 
-# create checkpoint folder
-pathlib.Path(checkpoint_path).parent.mkdir(parents=True, exist_ok=True)
+pathlib.Path(run_dir_path).mkdir(parents=True, exist_ok=True)
+checkpoint_path = os.path.join(run_dir_path, "checkpoint.pth")
 
 writer = SummaryWriter(run_dir_path)
 
@@ -132,9 +152,12 @@ training = Training(model, dataset, batch_size=batch_size)
 
 # plot ref audio and waveform
 ref_audio, ref_f0, ref_lo = dataset.get_sample(0)
+ref_audio = ref_audio.numpy()
 writer.add_audio("Groundtruth", ref_audio, 0, dataset.audio_sr)
 fig = plot_wf(ref_audio, dataset.audio_sr)
 writer.add_figure("Waveform/Groundtruth", fig, 0, True)
+fig = plot_spectrogram(ref_audio, dataset.audio_sr)
+writer.add_figure("Spectrogram/Groundtruth", fig, 0, True)
 writer.flush()
 
 best_epoch_loss = torch.finfo(dtype).max
@@ -167,6 +190,10 @@ while training.epoch < nb_epochs:
 
     fig = plot_wf(resynth_audio, dataset.audio_sr)
     writer.add_figure("Waveform/Resynth", fig, training.epoch, True)
+    writer.flush()
+
+    fig = plot_spectrogram(resynth_audio, dataset.audio_sr)
+    writer.add_figure("Spectrogram/Resynth", fig, training.epoch, True)
     writer.flush()
 
 writer.close()
