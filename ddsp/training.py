@@ -22,7 +22,7 @@ class Training:
         dataset,
         batch_size=12,
         train_test_split=0.8,
-        learning_rate=0.0001,
+        learning_rate=1e-4,
         scheduler_gamma=0.99,
         device=torch.device("cpu"),
     ):
@@ -50,7 +50,7 @@ class Training:
         )
 
         self.spectral_transform = MultiScaleSTFT()
-        self.spectral_loss = SpectralLinLogLoss()
+        self.spectral_loss = SpectralLinLogLoss(dtype=model.dtype)
 
         self.device = device
 
@@ -117,21 +117,17 @@ class Training:
 
 def save_checkpoint(training, out_path):
     state = {
-        # "data_loader": training.data_loader,
-        # "epoch": training.epoch,
-        # "train_loss": training.train_loss,
-        # "epoch_loss": training.epoch_loss,
         "model_state_dict": training.model.state_dict(),
-        # "optimizer_state_dict": training.optimizer.state_dict(),
-        # "scheduler_state_dict": training.scheduler.state_dict(),
+        "optimizer_state_dict": training.optimizer.state_dict(),
+        "scheduler_state_dict": training.scheduler.state_dict(),
+        "epoch": training.epoch,
+        "test_loss": training.test_loss,
     }
     torch.save(state, out_path)
 
 
 # def restore_checkpoint(path, dataset, device=torch.device("cpu")):
 #     state = torch.load(path, map_location=device)
-
-#     data_loader = state.data_loader
 
 #     model = Decoder()
 #     model.load_state_dict(state["model_state_dict"])
@@ -148,7 +144,6 @@ def save_checkpoint(training, out_path):
 #     training.scheduler.load_state_dict(state["scheduler_state_dict"])
 
 #     training.epoch = state["epoch"]
-#     traing.train_loss = state["train_loss"]
 #     traing.epoch_loss = state["epoch_loss"]
 
 #     return training
