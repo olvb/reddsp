@@ -103,7 +103,7 @@ class Dataset(torch.utils.data.Dataset):
 
             self.fragments += self.split_into_fragments(audio, f0, lo)
 
-    def split_into_fragments(self, audio, lo, f0):
+    def split_into_fragments(self, audio, f0, lo):
         nb_samples_per_frag = self.audio_sr * self.fragment_duration
         nb_frames_per_frag = self.frame_sr * self.fragment_duration
 
@@ -161,11 +161,13 @@ class Dataset(torch.utils.data.Dataset):
         wav_paths = sorted(glob.glob(wav_pattern))
         assert len(wav_paths) > 0, "No wav file found"
 
-        pitch_file_pattern = os.path.join(self.pitch_dir_path, "*.pth")
+        pitch_file_pattern = os.path.join(self.pitch_dir_path, "[0-9]*.pth")
         pitch_paths = sorted(glob.glob(pitch_file_pattern))
         assert len(pitch_paths) > 0, "No pitch file found"
 
-        loudness_file_pattern = os.path.join(self.loudness_dir_path, "*.pth")
+        loudness_file_pattern = os.path.join(
+            self.loudness_dir_path, "[0-9]*.pth"
+        )
         loudness_paths = sorted(glob.glob(loudness_file_pattern))
         assert len(loudness_paths) > 0, "No loudness file found"
 
