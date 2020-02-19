@@ -6,7 +6,7 @@ class MultiScaleSTFT:
         self,
         fft_sizes=[64, 128, 256, 512, 1024, 2048],
         overlap=0.75,
-        normalized=False,
+        normalized=True,
     ):
         self.fft_sizes = fft_sizes
         self.normalized = normalized
@@ -21,7 +21,7 @@ class MultiScaleSTFT:
             hop_length = int(fft_size * (1 - self.overlap))
             stft = torch.stft(
                 audio,
-                fft_size,
+                n_fft=fft_size,
                 hop_length=hop_length,
                 center=True,
                 pad_mode="reflect",
