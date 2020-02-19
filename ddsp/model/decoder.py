@@ -20,7 +20,7 @@ class Decoder(torch.nn.Module):
         default_noise_amp=1e-3,
         audio_sr=16000,
         frame_sr=160,
-        dtype=torch.float,
+        dtype=torch.float32,
     ):
         super(Decoder, self).__init__()
 
@@ -46,7 +46,9 @@ class Decoder(torch.nn.Module):
         if not bypass_noise:
             self.add_module(
                 "noise_synth",
-                NoiseSynth(nb_noise_bands, frame_length).type(dtype),
+                NoiseSynth(
+                    nb_noise_bands, frame_length, default_amp=default_noise_amp
+                ).type(dtype),
             )
 
     def forward(self, f0, lo):
