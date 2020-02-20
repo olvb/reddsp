@@ -9,6 +9,8 @@ class CREPEPitch:
 
     def __call__(self, audio, audio_sr, frame_sr):
         step_size = 1 / frame_sr * 1e3  # ms
+        assert step_size.is_integer()
+        step_size = int(step_size)
 
         _, f0, _, _ = crepe.predict(
             audio,

@@ -19,7 +19,7 @@ class RMSLoudness:
             audio,
             hop_length=frame_length,
             frame_length=frame_length * 2,
-            center=False,
+            center=True,
         )
 
         lo = lo.flatten()

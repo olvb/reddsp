@@ -21,5 +21,6 @@ class Preprocessor:
 
         f0 = self.pitch_transform(audio, audio_sr, self.frame_sr)
         lo = self.loudness_transform(audio, audio_sr, self.frame_sr)
+        assert f0.size() == lo.size()
 
         return f0, lo
