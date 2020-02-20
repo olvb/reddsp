@@ -45,8 +45,8 @@ class Dataset(torch.utils.data.Dataset):
         wav_dir_path,
         pitch_dir_path,
         loudness_dir_path,
-        fragment_duration=2,
-        dtype=torch.float,
+        fragment_duration=4,
+        dtype=torch.float32,
     ):
         self.fragment_duration = fragment_duration
         self.wav_dir_path = wav_dir_path
@@ -145,10 +145,7 @@ class Dataset(torch.utils.data.Dataset):
 
         f0 = torch.load(pitch_path)
         lo = torch.load(loudness_path)
-        # TODO why aren't they the same size?
-        length = min(f0.size()[-1], lo.size()[-1])
-        f0 = f0[:length]
-        lo = lo[:length]
+        assert f0.size() == lo.size()
 
         audio = audio.type(self.dtype)
         f0 = f0.type(self.dtype)
@@ -159,24 +156,32 @@ class Dataset(torch.utils.data.Dataset):
     def get_sample_paths(self):
         wav_pattern = os.path.join(self.wav_dir_path, "*.wav")
         wav_paths = sorted(glob.glob(wav_pattern))
-        assert len(wav_paths) > 0, "No wav file found"
+        assert len(wav_paths) > 0, "No wav file found in {}".format(
+            self.wav_dir_path
+        )
 
         pitch_file_pattern = os.path.join(self.pitch_dir_path, "[0-9]*.pth")
         pitch_paths = sorted(glob.glob(pitch_file_pattern))
-        assert len(pitch_paths) > 0, "No pitch file found"
+        assert len(pitch_paths) > 0, "No pitch file found in {}".format(
+            self.pitch_dir_path
+        )
 
         loudness_file_pattern = os.path.join(
             self.loudness_dir_path, "[0-9]*.pth"
         )
         loudness_paths = sorted(glob.glob(loudness_file_pattern))
-        assert len(loudness_paths) > 0, "No loudness file found"
+        assert len(loudness_paths) > 0, "No loudness file found in {}".format(
+            self.loudness_dir_path
+        )
 
         return wav_paths, pitch_paths, loudness_paths
 
 
 def read_wav(path, audio_sr=None):
     wav_sr, audio = scipy.io.wavfile.read(path)
-    assert wav_sr == audio_sr, "Inconsistent wav sample rate"
+    assert wav_sr == audio_sr, "Inconsistent sample rate for file {}".format(
+        path
+    )
 
     # int to float
     dtype = audio.dtype
