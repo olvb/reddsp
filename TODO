@@ -1,5 +1,3 @@
-- proper loudness
-- center/rescale f0 and loudness
 - hanning smoothing for amplitudes
 - more plots in tensorboard (f0, lo, a0, aa, etc)
 - mfcc f0
