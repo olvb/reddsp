@@ -21,7 +21,7 @@ class Training:
         batch_size=12,
         train_test_split=0.8,
         learning_rate=1e-4,
-        scheduler_gamma=0.99,
+        scheduler_gamma=0.98,
         device=torch.device("cpu"),
     ):
         self.model = model.to(device=device)
