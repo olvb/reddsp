@@ -28,13 +28,8 @@ class RMSLoudness:
 
 
 class PerceptualLoudness:
-    # upper_lo/lower_lo: values (in dB) used for loudness scaling and centering
-    # 21dB: loudness for a 1.0 amplitude white noise
-    # cf https://github.com/magenta/ddsp/blob/master/ddsp/spectral_ops.py
-    def __init__(self, fft_size=2048, upper_lo=21, lo_range=90):
+    def __init__(self, fft_size=2048):
         self.fft_size = fft_size
-        self.lo_range = lo_range
-        self.lo_center = upper_lo - self.lo_range / 2
 
     def __call__(self, audio, audio_sr, frame_sr):
         frame_length = audio_sr / frame_sr
