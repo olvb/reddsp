@@ -1,5 +1,4 @@
 datasets
-checkpoints
 runs
 *.wav
 *.pth

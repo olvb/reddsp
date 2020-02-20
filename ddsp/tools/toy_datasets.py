@@ -1,8 +1,8 @@
 import numpy as np
 import torch
 
-from ddsp.model.harm_synth import HarmSynth
-from ddsp.model.noise_synth import NoiseSynth
+from ddsp.model.harmonic import HarmSynth
+from ddsp.model.noise import NoiseSynth
 
 __all__ = [
     "gen_harm_dataset",

@@ -12,7 +12,6 @@ class MultiScaleSTFT:
         self.normalized = normalized
         self.overlap = overlap
 
-    # TODO investigate normalization
     def __call__(self, audio):
         """Computes multiscale stfts to use for  multiscale spectral loss."""
         stft_all = []

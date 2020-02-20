@@ -7,7 +7,7 @@ __all__ = ["NoiseSynth"]
 
 class NoiseSynth(torch.nn.Module):
     def __init__(self, nb_bands, frame_length, default_amp=1e-3):
-        super(NoiseSynth, self).__init__()
+        super().__init__()
 
         self.nb_bands = nb_bands
         self.default_amp = default_amp

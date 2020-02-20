@@ -15,16 +15,14 @@ class DecoderNet(torch.nn.Module):
     No z space."""
 
     def __init__(self, nb_harms, nb_noise_bands):
-        super(DecoderNet, self).__init__()
-
-        self.nb_harms = nb_harms
-        self.nb_noise_bands = nb_noise_bands
+        super().__init__()
 
         self.mlp_f0 = MLP(1, 512)
         self.mlp_lo = MLP(1, 512)
         self.gru = torch.nn.GRU(2 * 512, 512, batch_first=True)
 
         self.mlp = MLP(512, 512)
+
         self.dense_harm = torch.nn.Linear(512, nb_harms + 1)
         self.dense_noise = torch.nn.Linear(512, nb_noise_bands + 1)
 
@@ -34,6 +32,7 @@ class DecoderNet(torch.nn.Module):
 
         y = torch.cat((y_f0, y_lo), dim=2)
         y = self.gru(y)[0]
+
         y = self.mlp(y)
 
         y_harm = self.dense_harm(y)
@@ -44,6 +43,7 @@ class DecoderNet(torch.nn.Module):
         a0 = y_harm[..., 0]
         aa = y_harm[..., 1:]
         aa = aa.transpose(1, 2)
+
         h0 = y_noise[..., 0]
         hh = y_noise[..., 1:]
         hh = hh.transpose(1, 2)

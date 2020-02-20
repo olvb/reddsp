@@ -5,35 +5,28 @@ import torch
 import scipy.io.wavfile
 import numpy as np
 
+from .model.pitch import CREPEPitch
 from .model.preprocess import Preprocessor
 
-__all__ = ["preprocess_dataset", "Dataset"]
+__all__ = ["preprocess_dataset_f0", "Dataset"]
 
 
-def preprocess_dataset(
-    wav_dir_path, pitch_dir_path, loudness_dir_path, audio_sr, frame_sr
-):
-    preprocessor = Preprocessor(audio_sr=audio_sr, frame_sr=frame_sr)
+def preprocess_dataset_f0(wav_dir_path, f0_dir_path, audio_sr, frame_sr):
+    pitch = CREPEPitch()
 
     wav_pattern = os.path.join(wav_dir_path, "*.wav")
     wav_paths = sorted(glob.glob(wav_pattern))
 
     for i, wav_path in enumerate(wav_paths):
         audio = read_wav(wav_path, audio_sr)
-        f0, lo = preprocessor.preprocess(audio, audio_sr)
+        f0 = pitch(audio, audio_sr, frame_sr)
 
-        pitch_path = os.path.join(pitch_dir_path, "{:d}.pth".format(i + 1))
-        torch.save(f0, pitch_path)
+        f0_path = os.path.join(f0_dir_path, "{:d}.pth".format(i + 1))
+        torch.save(f0, f0_path)
 
-        loudness_path = os.path.join(
-            loudness_dir_path, "{:d}.pth".format(i + 1)
-        )
-        torch.save(lo, loudness_path)
-
-    # store dataset sample rates
-    for dir_path in [pitch_dir_path, loudness_dir_path]:
-        sr_path = os.path.join(dir_path, "frame_sr.pth")
-        torch.save(frame_sr, sr_path)
+    # store f0 sample rate
+    sr_path = os.path.join(f0_dir_path, "frame_sr.pth")
+    torch.save(frame_sr, sr_path)
 
 
 class Dataset(torch.utils.data.Dataset):
@@ -43,40 +36,36 @@ class Dataset(torch.utils.data.Dataset):
     def __init__(
         self,
         wav_dir_path,
-        pitch_dir_path,
-        loudness_dir_path,
+        f0_dir_path,
+        preprocessor=Preprocessor(),
         fragment_duration=4,
         dtype=torch.float32,
     ):
-        self.fragment_duration = fragment_duration
+        super().__init__()
+
         self.wav_dir_path = wav_dir_path
-        self.pitch_dir_path = pitch_dir_path
-        self.loudness_dir_path = loudness_dir_path
+        self.f0_dir_path = f0_dir_path
+        self.preprocessor = preprocessor
+        self.fragment_duration = fragment_duration
         self.dtype = dtype
 
-        self.load_audio_sr()
-        self.load_frame_sr()
-        self.load_fragments()
+        self.audio_sr = self._load_audio_sr()
+        self.frame_sr = self._load_frame_sr()
+        self.fragments = self._load_fragments()
 
-    def load_audio_sr(self):
+    def _load_audio_sr(self):
         """ Loads audio sample rate by opening a wav file """
-        wav_paths, _, _ = self.get_sample_paths()
+        wav_paths, _ = self.get_sample_paths()
         wav_path = wav_paths[0]
-        self.audio_sr, _ = scipy.io.wavfile.read(wav_path)
+        audio_sr, _ = scipy.io.wavfile.read(wav_path)
+        return audio_sr
 
-    def load_frame_sr(self):
-        """ Loads frame sample rate for preprocessed pitch and loudness values """
-        pitch_sr_path = os.path.join(self.pitch_dir_path, "frame_sr.pth")
-        pitch_frame_sr = torch.load(pitch_sr_path)
+    def _load_frame_sr(self):
+        """ Loads frame sample rate for preprocessed pitch values """
+        f0_sr_path = os.path.join(self.f0_dir_path, "frame_sr.pth")
+        f0_frame_sr = torch.load(f0_sr_path)
 
-        loudness_sr_path = os.path.join(self.loudness_dir_path, "frame_sr.pth")
-        loudness_frame_sr = torch.load(loudness_sr_path)
-
-        assert (
-            pitch_frame_sr == loudness_frame_sr
-        ), "Pitch and loudness data not sampled at same sample rate"
-
-        self.frame_sr = pitch_frame_sr
+        return f0_frame_sr
 
     def __len__(self):
         return len(self.fragments)
@@ -84,74 +73,42 @@ class Dataset(torch.utils.data.Dataset):
     def __getitem__(self, i):
         return self.fragments[i]
 
-    def load_fragments(self):
-        wav_paths, pitch_paths, loudness_paths = self.get_sample_paths()
-        all_paths = zip(wav_paths, pitch_paths, loudness_paths)
-        self.fragments = []
-
-        for wav_path, pitch_path, loudness_path in all_paths:
-            audio = read_wav(wav_path, self.audio_sr)
-            audio = torch.from_numpy(audio)
-
-            f0 = torch.load(pitch_path)
-            lo = torch.load(loudness_path)
-
-            # convert to requested type (float or double)
-            audio = audio.type(self.dtype)
-            f0 = f0.type(self.dtype)
-            lo = lo.type(self.dtype)
-
-            self.fragments += self.split_into_fragments(audio, f0, lo)
-
-    def split_into_fragments(self, audio, f0, lo):
-        nb_samples_per_frag = self.audio_sr * self.fragment_duration
-        nb_frames_per_frag = self.frame_sr * self.fragment_duration
-
-        nb_frags = min(
-            len(audio) // nb_samples_per_frag,
-            len(f0) // nb_frames_per_frag,
-            len(lo) // nb_frames_per_frag,
-        )
-
-        audio = audio[: nb_frags * nb_samples_per_frag]
-        audio = audio.reshape(nb_frags, -1)
-
-        f0 = f0[: nb_frags * nb_frames_per_frag]
-        f0 = f0.reshape(nb_frags, -1)
-
-        lo = lo[: nb_frags * nb_frames_per_frag]
-        lo = lo.reshape(nb_frags, -1)
+    def _load_fragments(self):
+        wav_paths, f0_paths = self.get_sample_paths()
 
         fragments = []
-        for i in range(nb_frags):
-            frag_audio = audio[i]
-            frag_f0 = f0[i]
-            frag_lo = lo[i]
 
-            frag = {"audio": frag_audio, "f0": frag_f0, "lo": frag_lo}
-            fragments.append(frag)
+        for i in range(len(wav_paths)):
+            audio, f0, f0_scaled, lo = self.get_sample(i, wav_paths, f0_paths)
+
+            fragments += self._split_into_fragments(audio, f0, f0_scaled, lo)
 
         return fragments
 
-    def get_sample(self, i):
+    def get_sample(self, i, wav_paths=None, f0_paths=None):
         """ Return unfragmented audio sample. Useful for evaluation """
-        wav_paths, pitch_paths, loudness_paths = self.get_sample_paths()
+        if wav_paths is None or f0_paths is None:
+            wav_paths, f0_paths = self.get_sample_paths()
 
         wav_path = wav_paths[i]
-        pitch_path = pitch_paths[i]
-        loudness_path = loudness_paths[i]
+        f0_path = f0_paths[i]
+
         audio = read_wav(wav_path, self.audio_sr)
+        f0 = torch.load(f0_path)
+
+        f0, f0_scaled, lo = self.preprocessor(
+            audio, self.audio_sr, self.frame_sr, f0=f0
+        )
+
         audio = torch.from_numpy(audio)
 
-        f0 = torch.load(pitch_path)
-        lo = torch.load(loudness_path)
-        assert f0.size() == lo.size()
-
+        # convert to requested type (float or double)
         audio = audio.type(self.dtype)
         f0 = f0.type(self.dtype)
+        f0_scaled = f0_scaled.type(self.dtype)
         lo = lo.type(self.dtype)
 
-        return audio, f0, lo
+        return audio, f0, f0_scaled, lo
 
     def get_sample_paths(self):
         wav_pattern = os.path.join(self.wav_dir_path, "*.wav")
@@ -160,21 +117,50 @@ class Dataset(torch.utils.data.Dataset):
             self.wav_dir_path
         )
 
-        pitch_file_pattern = os.path.join(self.pitch_dir_path, "[0-9]*.pth")
-        pitch_paths = sorted(glob.glob(pitch_file_pattern))
-        assert len(pitch_paths) > 0, "No pitch file found in {}".format(
-            self.pitch_dir_path
+        f0_file_pattern = os.path.join(self.f0_dir_path, "[0-9]*.pth")
+        f0_paths = sorted(glob.glob(f0_file_pattern))
+        assert len(f0_paths) > 0, "No f0 file found in {}".format(
+            self.f0_dir_path
         )
 
-        loudness_file_pattern = os.path.join(
-            self.loudness_dir_path, "[0-9]*.pth"
-        )
-        loudness_paths = sorted(glob.glob(loudness_file_pattern))
-        assert len(loudness_paths) > 0, "No loudness file found in {}".format(
-            self.loudness_dir_path
+        return wav_paths, f0_paths
+
+    def _split_into_fragments(self, audio, f0, f0_scaled, lo):
+        nb_samples_per_frag = self.audio_sr * self.fragment_duration
+        nb_frames_per_frag = self.frame_sr * self.fragment_duration
+
+        nb_frags = min(
+            len(audio) // nb_samples_per_frag, len(f0) // nb_frames_per_frag
         )
 
-        return wav_paths, pitch_paths, loudness_paths
+        audio = audio[: nb_frags * nb_samples_per_frag]
+        audio = audio.reshape(nb_frags, -1)
+
+        f0 = f0[: nb_frags * nb_frames_per_frag]
+        f0 = f0.reshape(nb_frags, -1)
+
+        f0_scaled = f0_scaled[: nb_frags * nb_frames_per_frag]
+        f0_scaled = f0.reshape(nb_frags, -1)
+
+        lo = lo[: nb_frags * nb_frames_per_frag]
+        lo = lo.reshape(nb_frags, -1)
+
+        fragments = []
+        for i in range(nb_frags):
+            frag_audio = audio[i]
+            frag_f0 = f0[i]
+            frag_f0_scaled = f0_scaled[i]
+            frag_lo = lo[i]
+
+            frag = {
+                "audio": frag_audio,
+                "f0": frag_f0,
+                "f0_scaled": frag_f0_scaled,
+                "lo": frag_lo,
+            }
+            fragments.append(frag)
+
+        return fragments
 
 
 def read_wav(path, audio_sr=None):

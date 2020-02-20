@@ -20,7 +20,7 @@ class Training:
         dataset,
         batch_size=12,
         train_test_split=0.8,
-        learning_rate=1e-4,
+        learning_rate=1e-3,
         scheduler_gamma=0.98,
         device=torch.device("cpu"),
     ):
@@ -41,6 +41,8 @@ class Training:
         )
 
         self.epoch = 0
+        self.train_loss = None
+        self.test_loss = None
 
         self.optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
         self.scheduler = torch.optim.lr_scheduler.ExponentialLR(
@@ -52,64 +54,51 @@ class Training:
 
         self.device = device
 
-    def run_epoch(self):
-        nb_batchs = len(self.train_data_loader)
-        loss_sum = 0
-
-        for fragments in self.train_data_loader:
-            truth_audio = fragments["audio"]
-            f0 = fragments["f0"]
-            lo = fragments["lo"]
-
-            # send to device
-            truth_audio = truth_audio.to(device=self.device)
-            f0 = f0.to(device=self.device)
-            lo = lo.to(device=self.device)
-
-            resynth_audio, _, _ = self.model.forward(f0, lo)
-            resynth_stfts = self.spectral_transform(resynth_audio)
-            truth_stfts = self.get_truth_spectral(truth_audio)
-            # TODO send truth stft to proper device
-            # [s.to(self.model.device) for s in fragments["stfts"]]
-            loss = self.spectral_loss(resynth_stfts, truth_stfts)
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
-
-            loss_sum += loss.item()
-
-        self.train_loss = loss_sum / nb_batchs
+    def train_epoch(self):
+        self.train_loss = self._run_epoch(self.train_data_loader, train=True)
         self.epoch += 1
         self.scheduler.step()
 
     def test_epoch(self):
-        nb_batchs = len(self.test_data_loader)
+        self.test_loss = self._run_epoch(self.test_data_loader, train=False)
+
+    def _run_epoch(self, data_loader, train=True):
+        torch.set_grad_enabled(train)
+
+        nb_batchs = len(data_loader)
         loss_sum = 0
 
-        for fragment in self.test_data_loader:
+        for fragment in data_loader:
             truth_audio = fragment["audio"]
             f0 = fragment["f0"]
+            f0_scaled = fragment["f0_scaled"]
             lo = fragment["lo"]
 
             # send to device
             truth_audio = truth_audio.to(device=self.device)
             f0 = f0.to(device=self.device)
+            f0_scaled = f0_scaled.to(device=self.device)
             lo = lo.to(device=self.device)
 
-            with torch.no_grad():
-                resynth_audio, _, _ = self.model.forward(f0, lo)
-                resynth_stfts = self.spectral_transform(resynth_audio)
-                truth_stfts = self.get_truth_spectral(truth_audio)
-                # TODO send truth stft to proper device
-                # [s.to(self.model.device) for s in fragments["stfts"]]
-                loss = self.spectral_loss(resynth_stfts, truth_stfts)
+            resynth_audio, _, _ = self.model.forward(f0, f0_scaled, lo)
+            resynth_stfts = self.spectral_transform(resynth_audio)
+            truth_stfts = self._get_truth_spectral(truth_audio)
+            # TODO send truth stft to proper device
+            # [s.to(self.model.device) for s in fragments["stfts"]]
+            loss = self.spectral_loss(resynth_stfts, truth_stfts)
 
-                loss_sum += loss.item()
+            loss_sum += loss.item()
 
-        self.test_loss = loss_sum / nb_batchs
+            if train:
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
+
+        loss = loss_sum / nb_batchs
+        return loss
 
     @lru_cache()
-    def get_truth_spectral(self, fragments_audio):
+    def _get_truth_spectral(self, fragments_audio):
         return self.spectral_transform(fragments_audio)
 
 

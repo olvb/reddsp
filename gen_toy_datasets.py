@@ -4,6 +4,8 @@ import os
 import argparse
 import pathlib
 
+import torch
+import numpy as np
 import scipy.io.wavfile
 
 from ddsp.tools.toy_datasets import *
@@ -21,6 +23,9 @@ parser.add_argument(
 args = parser.parse_args()
 out_dir_path = args.out_dir_path
 audio_sr = args.audio_sr
+
+torch.manual_seed(0)
+np.random.seed(0)
 
 
 def write_wavs(audios, out_dir_path, dataset_name):

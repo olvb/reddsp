@@ -4,7 +4,8 @@ import os
 import argparse
 import pathlib
 
-from ddsp.dataset import preprocess_dataset
+
+from ddsp.dataset import preprocess_dataset_f0
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -25,15 +26,7 @@ audio_sr = args.audio_sr
 frame_sr = args.frame_sr
 
 wav_dir_path = os.path.join(dataset_dir_path, "audio")
-pitch_dir_path = os.path.join(dataset_dir_path, "pitch")
-pathlib.Path(pitch_dir_path).mkdir(parents=True, exist_ok=True)
-loudness_dir_path = os.path.join(dataset_dir_path, "loudness")
-pathlib.Path(loudness_dir_path).mkdir(parents=True, exist_ok=True)
+f0_dir_path = os.path.join(dataset_dir_path, "f0")
+pathlib.Path(f0_dir_path).mkdir(parents=True, exist_ok=True)
 
-preprocess_dataset(
-    wav_dir_path,
-    pitch_dir_path,
-    loudness_dir_path,
-    audio_sr=audio_sr,
-    frame_sr=frame_sr,
-)
+preprocess_dataset_f0(wav_dir_path, f0_dir_path, audio_sr, frame_sr)

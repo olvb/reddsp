@@ -1,26 +1,21 @@
-from .loudness import RMSLoudness
-from .pitch import CREPEPitch
+from .loudness import *
+from .pitch import *
 
 
 class Preprocessor:
-    def __init__(
-        self,
-        audio_sr=16000,
-        frame_sr=100,
-        pitch_transform=CREPEPitch(),
-        loudness_transform=RMSLoudness(),
-    ):
-        self.frame_sr = frame_sr
-        self.audio_sr = audio_sr
+    def __init__(self):
+        self.pitch = CREPEPitch()
+        self.scale_pitch = ScalePitch()
+        self.loudness = PerceptualLoudness()
+        self.scale_loudness = ScalePerceptualLoudness()
+        # self.loudness = RMSLoudness()
 
-        self.pitch_transform = pitch_transform
-        self.loudness_transform = loudness_transform
+    def __call__(self, audio, audio_sr, frame_sr, f0=None):
+        if f0 is None:
+            f0 = self.pitch(audio, audio_sr, frame_sr)
+        f0_scaled = self.scale_pitch(f0)
 
-    def preprocess(self, audio, audio_sr):
-        assert audio_sr == self.audio_sr, "Inconsistent audio sample rate"
+        lo = self.loudness(audio, audio_sr, frame_sr)
+        # lo = self.scale_loudness(lo)
 
-        f0 = self.pitch_transform(audio, audio_sr, self.frame_sr)
-        lo = self.loudness_transform(audio, audio_sr, self.frame_sr)
-        assert f0.size() == lo.size()
-
-        return f0, lo
+        return f0, f0_scaled, lo

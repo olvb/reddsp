@@ -4,12 +4,12 @@ ReDDSP is a PyTorch reimplementation of Google's [Differentiable DSP][1]. For no
 
 Usage:
 1. Import a wav dataset or generate toy datasets
-2. Preprocess chosen dataset. Pitch and loudness data will be added in subfolders
+2. Preprocess f0 for chosen dataset. Pitch data will be added in a subfolder
 3. Launch training with paths to dataset and to TensorBoard run folder. Checkpoints will also be saved in the run folder
 4. Monitor training and results with TensorBoard
 ```shell
 ./gen_toy_datasets.py datasets/
-./preprocess_dataset.py datasets/harm_decay/
+./preprocess_dataset_f0.py datasets/harm_decay/
 ./train_model.py datasets/harm_decay/ runs/harm_decay
 tensorboard --logdir=runs
 ```
